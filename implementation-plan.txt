@@ -1,0 +1,226 @@
+# my-shop 全栈重构 · 实现计划
+
+## Context
+
+将纯前端电商后台原型（React 18 + Vite + Semi Design + Zustand，数据全部硬编码）重构为全栈项目（Express + Drizzle + SQLite），保持简历上的 4 条核心亮点不变（Semi Design 表单/表格、Zustand Selector、TypeScript 泛型、useMemo），新增登录、商品审核流程、售后管理，对齐抖店业务模型。
+
+## 实现阶段
+
+### 阶段 0：环境准备 & 项目结构搭建
+
+**0.1 React 降级（client）**
+- 修改 `client/package.json`：react/react-dom 从 ^19.2.6 → ^18.3.1，@types/react → ^18.3.x，@types/react-dom → ^18.3.x
+- `npm install` 更新 lock 文件
+- 确保项目能正常 `dev` 启动
+
+**0.2 根 package.json**
+- 新建根级 `package.json`，scripts:
+  - `dev` → `concurrently "npm run dev:server" "npm run dev:client"`
+  - `dev:client` → `cd client && npm run dev`
+  - `dev:server` → `cd server && npx tsx watch src/index.ts`
+- devDependencies: `concurrently`
+
+**0.3 shared/ 共享类型**
+- 新建 `shared/types.ts`
+- 从 `client/src/types/index.ts` 提取纯数据模型类型（OrderRow, ProductDraft, ProductSpec, CustomerRow, OrderItem 等）
+- 新增后端专用类型（ApiResponse<T>, PaginatedResult<T>, JwtPayload 等）
+
+**0.4 server/ 骨架**
+- 新建 `server/package.json`，依赖：express, better-sqlite3, drizzle-orm, jsonwebtoken, zod, cors；devDeps：drizzle-kit, tsx, @types/*
+- `server/tsconfig.json`
+- `server/src/index.ts` — Express 入口（CORS + JSON body parser + 路由挂载 + 启动时自动建表+seed）
+- `server/src/middleware/auth.ts` — JWT 校验中间件
+
+---
+
+### 阶段 1：数据库 Schema + Seed
+
+**1.1 Drizzle Schema（server/src/db/schema.ts）**
+- 10 张表按设计文档定义，字段名用 snake_case（SQLite 惯例）
+- 价格字段用 integer（分）
+- 时间字段用 text（ISO string）
+- 外键用 integer + references
+
+**1.2 数据库连接（server/src/db/index.ts）**
+- `better-sqlite3` 创建连接，文件路径 `server/data/shop.db`
+- 导出 `db` 实例
+- 导出 `initDB()` 函数：首次启动调用 `drizzle-kit` 迁移或 `db.run` 建表
+
+**1.3 种子数据（server/src/db/seed.ts）**
+- 1 个店铺 + 3 个用户（admin/operator/cs）
+- 三级类目树（~15 个类目，模拟 服饰鞋包→男鞋→运动鞋 等层级）
+- 5 个品牌
+- 3 个商品（各含规格+SKU），状态分别为 draft/audit_pending/on_sale
+- 15 条订单（复用现有 Mock 数据，调整字段对齐新表结构）+ 对应 order_items
+- 5 个客户（从订单聚合）
+- 3 条售后单
+- 启动时检查 `products` 表是否为空，为空则自动 seed
+
+---
+
+### 阶段 2：后端 API 实现
+
+遵循 `/api/v1` 前缀，`{ code: 0, data }` / `{ code: n, msg }` 格式。
+
+**2.1 工具函数（server/src/utils/）**
+- `response.ts` — `success(data)` / `error(code, msg)` 包装函数
+- `validate.ts` — Zod schema → Express middleware 包装器
+- `pagination.ts` — 分页参数解析 + 返回 `{ list, total, page, pageSize }`
+
+**2.2 Auth（routes/auth.ts + services/auth.ts）**
+- `POST /login` — 查 users 表 → bcrypt 校验 → 签发 JWT（payload: userId, shopId, role）
+- `GET /me` — 根据 token 返回当前用户信息
+- `POST /logout` — （可选，JWT 无状态，前端删 token 即可）
+
+**2.3 Dashboard（routes/dashboard.ts + services/dashboard.ts）**
+- 直接从数据库聚合查询（SQL）返回 stats/orderStatus/channelRanking/recentOrders
+- 使用 Drizzle 的 SQL 模板或原生 better-sqlite3 查询
+
+**2.4 Products（routes/products.ts + services/products.ts）**
+- CRUD + submitAudit + shelf
+- 创建/编辑时同时写入 products + spec_templates + product_skus（事务）
+- 商品列表 JOIN categories 和 brands 展示名称
+- 状态流转校验（只有 draft 可提交审核，只有 on_sale 可下架等）
+
+**2.5 Categories & Brands（routes/categories.ts + routes/brands.ts）**
+- 类目树：一次查出全部分类，递归构建树结构返回
+- 品牌列表：简单分页查询
+
+**2.6 Orders（routes/orders.ts + services/orders.ts）**
+- 列表 JOIN customers 表，支持 order_no/name/phone 搜索 + status 筛选 + channel 筛选 + 时间范围
+- 详情：订单基本信息 + order_items 列表 + 关联的 after_sales 记录
+- 状态修改：校验状态流转合法性
+
+**2.7 AfterSales（routes/afterSales.ts + services/afterSales.ts）**
+- 列表 JOIN orders + order_items
+- approve / reject / confirmReceive 操作 + 状态校验
+- reject 需要必填 reject_reason
+
+**2.8 Customers（routes/customers.ts + services/customers.ts）**
+- 列表：搜索 name/phone，按 total_spent 降序
+- 详情：客户信息 + 历史订单列表
+
+---
+
+### 阶段 3：前端基础设施
+
+**3.1 路由（client/src/App.tsx）**
+- 引入 `react-router-dom`
+- 路由结构：
+  - `/login` → LoginPage（公开）
+  - `/` → AppLayout（受保护，无 token 重定向到 /login）
+    - index → 重定向到 `/dashboard`
+    - `/dashboard` → DashboardPage
+    - `/products` → ProductListPage
+    - `/products/new` → ProductEditPage
+    - `/products/:id/edit` → ProductEditPage
+    - `/orders` → OrdersPage
+    - `/after-sales` → AfterSalesPage
+    - `/customers` → CustomerPage
+
+**3.2 API 请求层（client/src/api/）**
+- `client.ts` — 封装 fetch：自动拼接 `http://localhost:3000/api/v1` + 自动带 Authorization header（从 localStorage 取 token）+ 统一错误处理 + JSON 解析
+- 按模块拆分：`auth.ts`, `dashboard.ts`, `products.ts`, `categories.ts`, `brands.ts`, `orders.ts`, `afterSales.ts`, `customers.ts`
+- 每个 API 函数返回 Promise<ApiResponse<T>>
+
+**3.3 Auth 流程（client/src/store/）**
+- 在 `shopStore.ts` 中新增：`token`, `currentUser`, `login()`, `logout()`
+- LoginPage 调用 login → 存 token 到 localStorage + state → 跳转 /
+- AppLayout 的 `useEffect` 中调用 `/auth/me` 验证 token 有效性
+- 所有 API 请求 401 时自动跳回 /login
+
+**3.4 类型更新（client/src/types/index.ts）**
+- 新增 API 响应类型：`ApiResponse<T>`, `PaginatedData<T>`
+- 保留简历相关的所有业务类型（OrderRow, ProductDraft 等），结构不动
+
+---
+
+### 阶段 4：现有页面改造（最小改动）
+
+**4.1 DashboardPage**
+- `useEffect` 中调用 `GET /dashboard/stats` 等 4 个 API
+- 返回数据灌入 useMemo，聚合逻辑不变
+- StatCard 组件不动
+
+**4.2 OrdersPage**
+- `useEffect` 中调用 `GET /orders`（带分页+搜索+筛选参数）
+- 表格列配置 useMemo 保留
+- 行展开（expandedRowRender）改为 Modal 弹窗：`GET /orders/:id` → 展示基本信息 + 商品明细 + 售后记录
+- 状态下拉修改 → 调用 `PUT /orders/:id/status`
+- 新增时间范围筛选（Semi DatePicker）
+
+**4.3 CustomerPage**
+- `useEffect` 中调用 `GET /customers`
+- 搜索改为后端搜索（去抖 300ms 后重新请求）
+- 点击行 → Modal 展示客户详情 + `GET /customers/:id/orders` 历史订单
+
+---
+
+### 阶段 5：新增页面
+
+**5.1 LoginPage**
+- 居中卡片：Semi Input（username）+ Input（password）+ Button
+- 登录成功 → store.setToken → 跳转 `/dashboard`
+- 简单表单样式，不花哨
+
+**5.2 ProductListPage**
+- Semi Table：spu_id, title, category（JOIN 名称）, status（Tag）, price, stock, created_at
+- 顶部筛选栏：Select（类目选择）+ Select（状态选择）+ Input（标题搜索）
+- 操作列：编辑 / 提交审核 / 上架下架 / 删除
+- 按钮根据 status 禁用/显示：
+  - draft → 可编辑、提交审核、删除
+  - audit_pending → 不可操作
+  - audit_reject → 可编辑、提交审核
+  - on_sale → 可下架
+  - off_shelf → 可上架
+- 右上角按钮"发布商品"→ 跳转 `/products/new`
+
+**5.3 ProductEditPage（原 ProductPublishPage 改造）**
+- Semi Design 复杂表单**全部保留**（Input, TextArea, Select, InputNumber, Table）
+- 类目选择从写死数组 → Cascader 组件，数据从 `GET /categories` + `/categories/:id/children` 加载
+- 品牌选择从无 → Select 搜索选择，数据从 `GET /brands` 加载
+- 保存草稿 → 调用 `POST /products` 或 `PUT /products/:id`
+- 提交审核 → 调用 `POST /products/:id/submit-audit`
+- 底部发布检查 tags（publishChecks）保留
+- 路由参数区分新建/编辑：`useParams()` 取 id，有则先 `GET /products/:id` 填充表单
+
+**5.4 AfterSalesPage**
+- Semi Table：after_sale_no, order_no, type（退款/退货/换货 Tag）, reason, refund_amount, status（Tag）, created_at
+- 筛选：Select（status 筛选）
+- 操作列：同意 / 拒绝 / 确认收货
+- 拒绝时弹 Modal：TextArea 填写原因
+
+---
+
+### 阶段 6：收尾
+
+**6.1 启动脚本验证**
+- 确保根目录 `npm run dev` 一键启动前后端
+- 首次启动自动建表 + seed
+
+**6.2 README.md**
+- 项目简介（抖店风格电商后台）
+- 技术栈
+- 快速启动
+- 测试账号
+- 项目截图（选填）
+
+**6.3 简历一致性自查**
+- [ ] Semi Design 复杂表单（ProductEditPage）
+- [ ] Semi Design 表格（ProductListPage, OrdersPage, AfterSalesPage, CustomerPage）
+- [ ] Zustand Selector 精准订阅
+- [ ] TypeScript 泛型定义实体
+- [ ] useMemo 缓存聚合数据（DashboardPage）+ 列配置（OrdersPage）
+
+---
+
+## 验证方式
+
+1. `npm run dev` 一键启动，前端 :5173 + 后端 :3000 均无报错
+2. 浏览器访问 `http://localhost:5173` → 自动跳转 /login
+3. 用 seed 账号登录 → 进入首页，4 个统计卡片有数据
+4. 侧边栏切换各页面，表格数据正常加载
+5. 商品管理 → 新建商品 → 填写表单 → 保存草稿 → 提交审核 → 状态变为审核中
+6. 订单管理 → 搜索/筛选正常 → 点击行查看详情 → 修改状态成功
+7. 售后管理 → 同意/拒绝售后单 → 状态变更成功
+8. 刷新页面 → 数据不丢失（SQLite 持久化）

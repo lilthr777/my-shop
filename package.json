@@ -1,0 +1,14 @@
+{
+  "name": "my-shop",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "concurrently -n server,client -c blue,green \"npm run dev:server\" \"npm run dev:client\"",
+    "dev:client": "cd client && npm run dev",
+    "dev:server": "cd server && npx tsx watch src/index.ts"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2"
+  }
+}
