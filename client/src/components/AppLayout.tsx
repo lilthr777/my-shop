@@ -4,6 +4,12 @@ import { Avatar, Button, Layout, Nav, Space, Typography } from '@douyinfe/semi-u
 import type { MenuKey } from '../types'
 import { useShopStore } from '../store/shopStore'
 import { getMe } from '../api/auth'
+import IconHomeStroked from '@douyinfe/semi-icons/lib/es/icons/IconHomeStroked'
+import IconShoppingBagStroked from '@douyinfe/semi-icons/lib/es/icons/IconShoppingBagStroked'
+import IconGridStroked from '@douyinfe/semi-icons/lib/es/icons/IconGridStroked'
+import IconShieldStroked from '@douyinfe/semi-icons/lib/es/icons/IconShieldStroked'
+import IconUserListStroked from '@douyinfe/semi-icons/lib/es/icons/IconUserListStroked'
+import IconPlus from '@douyinfe/semi-icons/lib/es/icons/IconPlus'
 import DashboardPage from '../pages/DashboardPage'
 import OrdersPage from '../pages/OrdersPage'
 import ProductListPage from '../pages/ProductListPage'
@@ -20,6 +26,14 @@ const menuLabels: Record<MenuKey, string> = {
   products: '商品管理',
   afterSales: '售后管理',
   customers: '客户管理',
+}
+
+const menuIcons: Record<MenuKey, React.ReactNode> = {
+  dashboard: <IconHomeStroked />,
+  orders: <IconShoppingBagStroked />,
+  products: <IconGridStroked />,
+  afterSales: <IconShieldStroked />,
+  customers: <IconUserListStroked />,
 }
 
 export default function AppLayout() {
@@ -73,11 +87,11 @@ export default function AppLayout() {
             else if (key === 'customers') navigate('/customers')
           }}
           items={[
-            { itemKey: 'dashboard', text: '首页概览' },
-            { itemKey: 'orders', text: '订单管理' },
-            { itemKey: 'products', text: '商品管理' },
-            { itemKey: 'afterSales', text: '售后管理' },
-            { itemKey: 'customers', text: '客户管理' },
+            { itemKey: 'dashboard', text: '首页概览', icon: menuIcons.dashboard },
+            { itemKey: 'orders', text: '订单管理', icon: menuIcons.orders },
+            { itemKey: 'products', text: '商品管理', icon: menuIcons.products },
+            { itemKey: 'afterSales', text: '售后管理', icon: menuIcons.afterSales },
+            { itemKey: 'customers', text: '客户管理', icon: menuIcons.customers },
           ]}
         />
       </Sider>
@@ -87,13 +101,13 @@ export default function AppLayout() {
             <Title heading={4}>{menuLabels[currentMenu]}</Title>
           </div>
           <Space>
-            <Button theme="solid" type="primary" onClick={() => navigate('/products/new')}>
+            <Button icon={<IconPlus />} theme="solid" type="primary" onClick={() => navigate('/products/new')}>
               发布商品
             </Button>
             <Button theme="borderless" onClick={toggleDarkMode} style={{ fontSize: 18 }}>
-            {darkMode ? '☀️' : '🌙'}
-          </Button>
-          <Avatar color="light-blue" size="small">MS</Avatar>
+              {darkMode ? '☀️' : '🌙'}
+            </Button>
+            <Avatar color="light-blue" size="small">MS</Avatar>
           </Space>
         </Header>
         <Content className="admin-content">

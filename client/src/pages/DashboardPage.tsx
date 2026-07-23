@@ -4,6 +4,10 @@ import ReactECharts from 'echarts-for-react'
 import StatCard from '../components/StatCard'
 import ChartCard from '../components/ChartCard'
 import { useShopStore } from '../store/shopStore'
+import IconNoteMoneyStroked from '@douyinfe/semi-icons/lib/es/icons/IconNoteMoneyStroked'
+import IconShoppingBagStroked from '@douyinfe/semi-icons/lib/es/icons/IconShoppingBagStroked'
+import IconCoinMoneyStroked from '@douyinfe/semi-icons/lib/es/icons/IconCoinMoneyStroked'
+import IconHelpCircleStroked from '@douyinfe/semi-icons/lib/es/icons/IconHelpCircleStroked'
 import {
   getDashboardStats,
   getOrderStatus,
@@ -148,10 +152,10 @@ export default function DashboardPage() {
 
   return (
     <div className="dashboard-grid">
-      <StatCard label="今日成交额" value={`¥ ${(stats.todayGmv / 100).toLocaleString('zh-CN')}`} trend={`订单总量 ${stats.orderCount}`} />
-      <StatCard label="订单总量" value={String(stats.orderCount)} trend={`客单价 ¥ ${(stats.avgOrderAmount / 100).toFixed(2)}`} />
-      <StatCard label="客单价" value={`¥ ${(stats.avgOrderAmount / 100).toFixed(2)}`} trend={`${stats.orderCount} 笔订单`} />
-      <StatCard label="待处理售后" value={String(stats.pendingAfterSales)} trend="需及时处理" />
+      <StatCard icon={<IconNoteMoneyStroked style={{ color: 'var(--semi-color-primary)' }} />} label="今日成交额" value={`¥ ${(stats.todayGmv / 100).toLocaleString('zh-CN')}`} trend={`订单总量 ${stats.orderCount}`} />
+      <StatCard icon={<IconShoppingBagStroked style={{ color: 'var(--semi-color-success)' }} />} label="订单总量" value={String(stats.orderCount)} trend={`客单价 ¥ ${(stats.avgOrderAmount / 100).toFixed(2)}`} />
+      <StatCard icon={<IconCoinMoneyStroked style={{ color: 'var(--semi-color-warning)' }} />} label="客单价" value={`¥ ${(stats.avgOrderAmount / 100).toFixed(2)}`} trend={`${stats.orderCount} 笔订单`} />
+      <StatCard icon={<IconHelpCircleStroked style={{ color: 'var(--semi-color-danger)' }} />} label="待处理售后" value={String(stats.pendingAfterSales)} trend="需及时处理" />
 
       <ChartCard title="近 7 天 GMV 趋势" loading={loading} style={{ gridColumn: 'span 4' }}>
         <ReactECharts option={gmvChartOption} style={{ height: 300 }} notMerge />

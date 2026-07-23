@@ -122,7 +122,7 @@ export function seedIfEmpty(): void {
   custData.forEach((c) => db.run(`INSERT INTO customers (name, phone, total_orders, total_spent, last_order_at, note, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)`, c))
 
   // ==================== 订单（跨30天，确保近7天有数据） ====================
-  const channels = ['live', 'video', 'search', 'shop_home', 'recommend']
+  const channels = ['直播', '短视频', '搜索', '店铺首页', '推荐']
   const statuses = ['done', 'done', 'done', 'wait_receive', 'wait_ship', 'wait_pay', 'closed'] // weighted
   const addresses = [
     ['张三', '138****6789', '浙江省杭州市西湖区'],
@@ -144,17 +144,17 @@ export function seedIfEmpty(): void {
 
   const orderTemplates: [number, number, number, string][] = [
     // [productId, unitPrice, quantity, channel]
-    [1, 56800, 1, 'live'], [1, 56800, 2, 'video'], [2, 129900, 1, 'search'],
-    [2, 26800, 1, 'shop_home'], [3, 8650, 2, 'recommend'], [3, 8650, 1, 'live'],
-    [4, 3900, 3, 'video'], [4, 3900, 1, 'search'], [1, 219800, 1, 'live'],
-    [2, 128000, 1, 'video'], [3, 32500, 1, 'shop_home'], [4, 3900, 5, 'recommend'],
-    [1, 56800, 1, 'search'], [2, 129900, 1, 'live'], [3, 8650, 1, 'video'],
-    [4, 3900, 2, 'shop_home'], [1, 75600, 1, 'recommend'], [2, 159900, 1, 'search'],
-    [3, 7200, 1, 'live'], [4, 3900, 1, 'video'], [1, 349900, 1, 'search'],
-    [2, 26800, 3, 'shop_home'], [3, 8650, 2, 'recommend'], [4, 3900, 4, 'live'],
-    [1, 56800, 1, 'video'], [2, 129900, 1, 'search'], [3, 45600, 1, 'shop_home'],
-    [4, 3900, 2, 'live'], [1, 159900, 1, 'video'], [2, 18900, 1, 'recommend'],
-    [3, 8650, 1, 'search'], [4, 3900, 3, 'shop_home'],
+    [1, 56800, 1, '直播'], [1, 56800, 2, '短视频'], [2, 129900, 1, '搜索'],
+    [2, 26800, 1, '店铺首页'], [3, 8650, 2, '推荐'], [3, 8650, 1, '直播'],
+    [4, 3900, 3, '短视频'], [4, 3900, 1, '搜索'], [1, 219800, 1, '直播'],
+    [2, 128000, 1, '短视频'], [3, 32500, 1, '店铺首页'], [4, 3900, 5, '推荐'],
+    [1, 56800, 1, '搜索'], [2, 129900, 1, '直播'], [3, 8650, 1, '短视频'],
+    [4, 3900, 2, '店铺首页'], [1, 75600, 1, '推荐'], [2, 159900, 1, '搜索'],
+    [3, 7200, 1, '直播'], [4, 3900, 1, '短视频'], [1, 349900, 1, '搜索'],
+    [2, 26800, 3, '店铺首页'], [3, 8650, 2, '推荐'], [4, 3900, 4, '直播'],
+    [1, 56800, 1, '短视频'], [2, 129900, 1, '搜索'], [3, 45600, 1, '店铺首页'],
+    [4, 3900, 2, '直播'], [1, 159900, 1, '短视频'], [2, 18900, 1, '推荐'],
+    [3, 8650, 1, '搜索'], [4, 3900, 3, '店铺首页'],
   ]
 
   const productTitles = ['春夏新款轻量运动鞋', '通勤双肩包', '陶瓷保温杯', 'MagSafe 磁吸手机壳']
